@@ -63,6 +63,65 @@ sudo MT76_SRC=/path/to/linux/drivers/net/wireless/mediatek/mt76 python3 install.
 
 Run `sudo python3 install.py` again after every kernel update, then reboot.
 
+## Verify
+
+After rebooting, check that the new modules are the ones loaded:
+
+```sh
+modinfo -n mt7921e btusb bluetooth
+```
+
+All three paths must be under `/lib/modules/$(uname -r)/updates/`.
+
+Wi-Fi: the driver must report the chip without an `Oops`, and a `wl*`
+interface must exist:
+
+```sh
+sudo dmesg | grep -iE 'mt7921|Oops' | tail
+ip link | grep wl
+```
+
+Bluetooth: btusb must use bulk OUT `0x02` and only one controller must
+remain, the phantom one being disabled:
+
+```sh
+sudo dmesg | grep 'PS5: using bulk OUT'
+ls /sys/class/bluetooth/
+bluetoothctl list
+```
+
+## Troubleshooting
+
+- **`Oops` in `mt7921_pci_probe` / `modprobe` killed with SIGKILL**: the
+  installed `mt7921e.ko` was built for another kernel or against other mt76
+  sources. Run `sudo python3 install.py --build` and reboot. If the system
+  crashes on every boot, boot once with `modprobe.blacklist=mt7921e` on the
+  kernel command line, then reinstall.
+- **`unrecognized command-line option` or `-fsanitize=` errors while
+  building**: the kernel was built with clang and the module with gcc.
+  Install `clang-21 lld-21 llvm-21`.
+- **`mt7921e is already loaded; reboot`**: a previous module, possibly a
+  crashed one, is still in memory and cannot be unloaded. Reboot.
+- **`failed to load ... .bin` in `dmesg`**: the firmware is missing. The
+  MT7921 needs `WIFI_RAM_CODE_MT7961_1.bin` and
+  `WIFI_MT7961_patch_mcu_1_2_hdr.bin` in `/lib/firmware/mediatek/` (package
+  `linux-firmware`).
+- **`does not match the pinned patch`**: the Bluetooth patch download was
+  incomplete or changed. Check the connection and run the installer again.
+- **`not a PS5 kernel (ps5-linux btusb changes missing)`**: the build tree is
+  not the PS5 patched kernel; the Bluetooth fixes need it.
+- **Two Bluetooth controllers after rebooting**: the udev rule did not
+  apply. Check that `/etc/udev/rules.d/99-ps5-bt-phantom.rules` exists and
+  reboot.
+
+## DualSense over Bluetooth
+
+BlueZ cannot pair a DualSense over the USB cable. With the Bluetooth fixes
+installed, pair it with the scripts in the `dualsense/` directory of
+[WizGery/ps5-mediatek-fixes](https://github.com/WizGery/ps5-mediatek-fixes#dualsense-over-bluetooth),
+which also describes an udev rule that pairs the controller automatically
+every time it is plugged in over USB.
+
 ## Uninstall
 
 ```sh
