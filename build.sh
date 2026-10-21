@@ -60,7 +60,7 @@ else
     compiler="CC=$CC"
 fi
 
-rm -rf -- "$BUILD"
+rm -rf -- "$OUT" "$BUILD"/*.h "$BUILD/mt7921e.ko"
 mkdir -p "$OUT"
 cp -- "$MT76_SRC"/*.h "$BUILD/"
 cp -- "$MT76_SRC"/mt7921/{Makefile,pci.c,pci_mac.c,pci_mcu.c} "$MT76_SRC"/mt7921/*.h "$OUT/"
